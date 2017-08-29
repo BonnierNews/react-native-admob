@@ -1,11 +1,15 @@
 package com.sbugert.rnadmob;
 
 import android.content.Context;
+import android.location.Location;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableMapKeySetIterator;
+import com.facebook.react.bridge.ReadableNativeMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableNativeArray;
@@ -23,10 +27,15 @@ import com.google.android.gms.ads.AdSize;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.doubleclick.PublisherAdView;
 
+import java.sql.Date;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 class ReactPublisherAdView extends ReactViewGroup implements AppEventListener {
 
@@ -34,6 +43,7 @@ class ReactPublisherAdView extends ReactViewGroup implements AppEventListener {
   String[] testDevices;
   AdSize[] validAdSizes;
   AdSize adSize;
+  ReadableMap targeting;
 
   public ReactPublisherAdView(final Context context) {
     super(context);
@@ -140,6 +150,97 @@ class ReactPublisherAdView extends ReactViewGroup implements AppEventListener {
         adRequestBuilder.addTestDevice(testDevices[i]);
       }
     }
+
+    if (targeting != null) {
+      if (targeting.hasKey("customTargeting")) {
+        ReadableMap customTargeting = targeting.getMap("customTargeting");
+        ReadableMapKeySetIterator iterator = customTargeting.keySetIterator();
+        while (iterator.hasNextKey()) {
+          String key = iterator.nextKey();
+          String value = customTargeting.getString(key);
+          adRequestBuilder.addCustomTargeting(key, value);
+        }
+      }
+
+      if (targeting.hasKey("categoryExclusions")) {
+        ReadableArray categoryExclusions = targeting.getArray("categoryExclusions");
+        for (int i = 0; i < categoryExclusions.size(); i++) {
+          try {
+            String category = categoryExclusions.getString(i);
+            adRequestBuilder.addCategoryExclusion(category);
+          } catch (Exception e) {}
+        }
+      }
+
+      if (targeting.hasKey("keywords")) {
+        ReadableArray keywords = targeting.getArray("keywords");
+        for (int i = 0; i < keywords.size(); i++) {
+          try {
+            String keyword = keywords.getString(i);
+            adRequestBuilder.addCategoryExclusion(keyword);
+          } catch (Exception e) {}
+        }
+      }
+
+      if (targeting.hasKey("gender")) {
+        try {
+          String gender = targeting.getString("gender");
+          if (gender == "male") {
+            adRequestBuilder.setGender(PublisherAdRequest.GENDER_MALE);
+          } else if (gender == "female") {
+            adRequestBuilder.setGender(PublisherAdRequest.GENDER_FEMALE);
+          } else {
+            adRequestBuilder.setGender(PublisherAdRequest.GENDER_UNKNOWN);
+          }
+        } catch (Exception e) {}
+      }
+
+      /*if (targeting.hasKey("birthday")) {
+        try {
+          String birthdayString = targeting.getString("birthday");
+          DateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.ENGLISH);
+          Date birthday = new Date(format.parse(birthdayString).getTime());
+          adRequestBuilder.setBirthday(birthday);
+          Log.d("PublisherAdBanner", "birthday");
+        } catch (Exception e) {
+          Log.d("PublisherAdBanner", "could not set birthday");
+        }
+      }*/
+
+      if (targeting.hasKey("childDirectedTreatment")) {
+        Boolean childDirectedTreatment = targeting.getBoolean("childDirectedTreatment");
+        adRequestBuilder.tagForChildDirectedTreatment(childDirectedTreatment);
+      }
+
+      if (targeting.hasKey("contentURL")) {
+        try {
+          String contentURL = targeting.getString("contentURL");
+          adRequestBuilder.setContentUrl(contentURL);
+        } catch (Exception e) {}
+      }
+
+      if (targeting.hasKey("publisherProvidedID")) {
+        try {
+          String publisherProvidedID = targeting.getString("publisherProvidedID");
+          adRequestBuilder.setPublisherProvidedId(publisherProvidedID);
+        } catch (Exception e) {}
+      }
+
+      if (targeting.hasKey("location")) {
+        try {
+          ReadableMap locationMap = targeting.getMap("location");
+          double lat = locationMap.getDouble("latitude");
+          double lon = locationMap.getDouble("longitude");
+          double accuracy = locationMap.getDouble("accuracy");
+          Location location = new Location("");
+          location.setLatitude(lat);
+          location.setLongitude(lon);
+          location.setAccuracy((float) accuracy);
+          adRequestBuilder.setLocation(location);
+        } catch (Exception e) {}
+      }
+    }
+
     PublisherAdRequest adRequest = adRequestBuilder.build();
     this.adView.loadAd(adRequest);
   }
@@ -159,6 +260,8 @@ class ReactPublisherAdView extends ReactViewGroup implements AppEventListener {
   public void setValidAdSizes(AdSize[] adSizes) {
     this.validAdSizes = adSizes;
   }
+
+  public void setTargeting(ReadableMap targeting) { this.targeting = targeting; }
 
   @Override
   public void onAppEvent(String name, String info) {
@@ -183,6 +286,7 @@ public class RNPublisherBannerViewManager extends SimpleViewManager<ReactPublish
   public static final String PROP_VALID_AD_SIZES = "validAdSizes";
   public static final String PROP_AD_UNIT_ID = "adUnitID";
   public static final String PROP_TEST_DEVICES = "testDevices";
+  public static final String PROP_TARGETING = "targeting";
 
   public static final int COMMAND_LOAD_BANNER = 1;
 
@@ -217,23 +321,26 @@ public class RNPublisherBannerViewManager extends SimpleViewManager<ReactPublish
   }
 
   @ReactProp(name = PROP_AD_SIZE)
-  public void setPropAdSize(final ReactPublisherAdView view, final String sizeString) {
-    AdSize adSize = getAdSizeFromString(sizeString);
-    view.setAdSize(adSize);
+  public void setPropAdSize(final ReactPublisherAdView view, final ReadableMap size) {
+    AdSize adSize = getAdSizeFromReadableMap(size);
+    if (adSize != null) {
+      view.setAdSize(adSize);
+    }
   }
 
   @ReactProp(name = PROP_VALID_AD_SIZES)
-  public void setPropValidAdSizes(final ReactPublisherAdView view, final ReadableArray adSizeStrings) {
-    ReadableNativeArray nativeArray = (ReadableNativeArray)adSizeStrings;
-    ArrayList<Object> list = nativeArray.toArrayList();
-    String[] adSizeStringsArray = list.toArray(new String[list.size()]);
-    AdSize[] adSizes = new AdSize[list.size()];
+  public void setPropValidAdSizes(final ReactPublisherAdView view, final ReadableArray adSizes) {
+    ReadableNativeArray nativeArray = (ReadableNativeArray)adSizes;
+    AdSize[] validAdSizes = new AdSize[nativeArray.size()];
 
-    for (int i = 0; i < adSizeStringsArray.length; i++) {
-        String adSizeString = adSizeStringsArray[i];
-        adSizes[i] = getAdSizeFromString(adSizeString);
+    for (int i = 0; i < nativeArray.size(); i++) {
+        ReadableNativeMap size = nativeArray.getMap(i);
+        AdSize adSize = getAdSizeFromReadableMap(size);
+        if (adSize != null) {
+          validAdSizes[i] = adSize;
+        }
     }
-    view.setValidAdSizes(adSizes);
+    view.setValidAdSizes(validAdSizes);
   }
 
   @ReactProp(name = PROP_AD_UNIT_ID)
@@ -246,6 +353,11 @@ public class RNPublisherBannerViewManager extends SimpleViewManager<ReactPublish
     ReadableNativeArray nativeArray = (ReadableNativeArray)testDevices;
     ArrayList<Object> list = nativeArray.toArrayList();
     view.setTestDevices(list.toArray(new String[list.size()]));
+  }
+
+  @ReactProp(name = PROP_TARGETING)
+  public void setPropTargeting(final ReactPublisherAdView view, final ReadableMap targeting) {
+    view.setTargeting(targeting);
   }
 
   private AdSize getAdSizeFromString(String adSize) {
@@ -268,6 +380,16 @@ public class RNPublisherBannerViewManager extends SimpleViewManager<ReactPublish
         return AdSize.SMART_BANNER;
       default:
         return AdSize.BANNER;
+    }
+  }
+
+  private AdSize getAdSizeFromReadableMap(ReadableMap adSize) {
+    try {
+      int width = adSize.getInt("width");
+      int height = adSize.getInt("height");
+      return new AdSize(width, height);
+    } catch (Exception e) {
+      return null;
     }
   }
 
