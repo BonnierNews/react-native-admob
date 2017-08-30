@@ -63,6 +63,11 @@ class PublisherBanner extends Component {
         onSizeChange={this.handleSizeChange}
         onDidFailToReceiveAdWithError={this.handleDidFailToReceiveAdWithError}
         onAdmobDispatchAppEvent={this.handleAdmobDispatchAppEvent}
+        onAdViewDidReceiveAd={this.props.adViewDidReceiveAd}
+        onAdViewWillPresentScreen={this.props.adViewWillPresentScreen}
+        onAdViewWillDismissScreen={this.props.adViewWillDismissScreen}
+        onAdViewDidDismissScreen={this.props.adViewDidDismissScreen}
+        onAdViewWillLeaveApplication={this.props.adViewWillLeaveApplication}
         ref={el => (this._bannerView = el)}
       />
     );
