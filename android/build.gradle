@@ -17,6 +17,6 @@ android {
 }
 
 dependencies {
-    compile 'com.facebook.react:react-native:9.4.0'
+    compile 'com.facebook.react:react-native:+'
     compile 'com.google.android.gms:play-services-ads:9.4.0'
 }
