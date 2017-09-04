@@ -27,12 +27,14 @@ import com.google.android.gms.ads.AdSize;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.doubleclick.PublisherAdView;
 
+import java.sql.Array;
 import java.sql.Date;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -157,8 +159,42 @@ class ReactPublisherAdView extends ReactViewGroup implements AppEventListener {
         ReadableMapKeySetIterator iterator = customTargeting.keySetIterator();
         while (iterator.hasNextKey()) {
           String key = iterator.nextKey();
-          String value = customTargeting.getString(key);
-          adRequestBuilder.addCustomTargeting(key, value);
+          String value = "";
+          switch (customTargeting.getType(key)) {
+            case Boolean:
+              value = Boolean.toString(customTargeting.getBoolean(key));
+              adRequestBuilder.addCustomTargeting(key, value);
+              break;
+            case Number:
+              double d = customTargeting.getDouble(key);
+              if ((d % 1) == 0) {
+                value = Integer.toString((int) d);
+              }
+              else {
+                value = Double.toString(d);
+              }
+              adRequestBuilder.addCustomTargeting(key, value);
+              break;
+            case String:
+              value = customTargeting.getString(key);
+              adRequestBuilder.addCustomTargeting(key, value);
+              break;
+            case Array:
+              ReadableArray a = customTargeting.getArray(key);
+              List<String> values = new ArrayList<String>();
+              for (int i = 0; i < a.size(); i++) {
+                switch (a.getType(i)) {
+                  case String:
+                    values.add(a.getString(i));
+                    break;
+                  default:
+                    break;
+                }
+              }
+              adRequestBuilder.addCustomTargeting(key, values);
+            default:
+              break;
+          }
         }
       }
 
