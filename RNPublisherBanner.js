@@ -17,9 +17,23 @@ class PublisherBanner extends Component {
     this.handleSizeChange = this.handleSizeChange.bind(this);
     this.handleAdmobDispatchAppEvent = this.handleAdmobDispatchAppEvent.bind(this);
     this.handleDidFailToReceiveAdWithError = this.handleDidFailToReceiveAdWithError.bind(this);
+    this.handleDidReceiveAd = this.handleDidReceiveAd.bind(this);
     this.state = {
       style: {},
+      hasReceivedAd: false
     };
+  }
+
+  componentWillReceiveProps(nextProps) {
+    if (this.state.hasReceivedAd) {
+      if (this.props !== nextProps) {
+        this.setState({hasReceivedAd: false})
+      }
+    }
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return !nextState.hasReceivedAd
   }
 
   handleSizeChange(event) {
@@ -28,6 +42,11 @@ class PublisherBanner extends Component {
     if (this.props.onSizeChange) {
       this.props.onSizeChange({ width, height });
     }
+  }
+
+  handleDidReceiveAd(event) {
+    this.setState({hasReceivedAd: true})
+    this.props.adViewDidReceiveAd && this.props.adViewDidReceiveAd(event)
   }
 
   handleAdmobDispatchAppEvent(event) {
@@ -51,7 +70,7 @@ class PublisherBanner extends Component {
         onSizeChange={this.handleSizeChange}
         onDidFailToReceiveAdWithError={this.handleDidFailToReceiveAdWithError}
         onAdmobDispatchAppEvent={this.handleAdmobDispatchAppEvent}
-        onAdViewDidReceiveAd={this.props.adViewDidReceiveAd}
+        onAdViewDidReceiveAd={this.handleDidReceiveAd}
         onAdViewWillPresentScreen={this.props.adViewWillPresentScreen}
         onAdViewWillDismissScreen={this.props.adViewWillDismissScreen}
         onAdViewDidDismissScreen={this.props.adViewDidDismissScreen}
