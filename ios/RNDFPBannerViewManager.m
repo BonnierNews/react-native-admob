@@ -17,24 +17,12 @@ RCT_EXPORT_MODULE();
 
 - (UIView *)view
 {
-  return [RNDFPBannerView new];
+  return [[RNDFPBannerView alloc] init];
 }
 
 - (dispatch_queue_t)methodQueue
 {
   return dispatch_get_main_queue();
-}
-
-RCT_EXPORT_METHOD(loadBanner:(nonnull NSNumber *)reactTag)
-{
-    [self.bridge.uiManager addUIBlock:^(__unused RCTUIManager *uiManager, NSDictionary<NSNumber *, RNDFPBannerView *> *viewRegistry) {
-        RNDFPBannerView *view = viewRegistry[reactTag];
-        if (![view isKindOfClass:[RNDFPBannerView class]]) {
-            RCTLogError(@"Invalid view returned from registry, expecting RNDFPBannerView, got: %@", view);
-        } else {
-            [view loadBanner];
-        }
-    }];
 }
 
 RCT_REMAP_VIEW_PROPERTY(adSize, _bannerView.adSize, GADAdSize)

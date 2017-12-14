@@ -12,15 +12,15 @@
 #include "RCTConvert+GADGender.h"
 
 @implementation RNDFPBannerView
-{
-    DFPBannerView  *_bannerView;
-}
 
 - (void)dealloc
 {
     _bannerView.delegate = nil;
     _bannerView.adSizeDelegate = nil;
     _bannerView.appEventDelegate = nil;
+    _bannerView.rootViewController = nil;
+    [_bannerView removeFromSuperview];
+    _bannerView = nil;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -36,59 +36,65 @@
         _bannerView.adSizeDelegate = self;
         _bannerView.appEventDelegate = self;
         _bannerView.rootViewController = rootViewController;
-        [self addSubview:_bannerView];
     }
     
     return self;
 }
 
 - (void)loadBanner {
-    DFPRequest *request = [DFPRequest request];
-    request.testDevices = _testDevices;
-
-    if (_targeting != nil) {
-        NSDictionary *customTargeting = [_targeting objectForKey:@"customTargeting"];
-        if (customTargeting != nil) {
-            request.customTargeting = customTargeting;
-        }
-        NSArray *categoryExclusions = [_targeting objectForKey:@"categoryExclusions"];
-        if (categoryExclusions != nil) {
-            request.categoryExclusions = categoryExclusions;
-        }
-        NSArray *keywords = [_targeting objectForKey:@"keywords"];
-        if (keywords != nil) {
-            request.keywords = keywords;
-        }
-        NSString *gender = [_targeting objectForKey:@"gender"];
-        if (gender != nil) {
-            request.gender = [RCTConvert GADGender:gender];
-        }
-        NSDate *birthday = [_targeting objectForKey:@"birthday"];
-        if (birthday != nil) {
-            request.birthday = [RCTConvert NSDate:birthday];
-        }
-        id childDirectedTreatment = [_targeting objectForKey:@"childDirectedTreatment"];
-        if (childDirectedTreatment != nil) {
-            [request tagForChildDirectedTreatment:childDirectedTreatment];
-        }
-        NSString *contentURL = [_targeting objectForKey:@"contentURL"];
-        if (contentURL != nil) {
-            request.contentURL = contentURL;
-        }
-        NSString *publisherProvidedID = [_targeting objectForKey:@"publisherProvidedID"];
-        if (publisherProvidedID != nil) {
-            request.publisherProvidedID = publisherProvidedID;
-        }
-        NSDictionary *location = [_targeting objectForKey:@"location"];
-        if (location != nil) {
-            CGFloat latitude = [[location objectForKey:@"latitude"] doubleValue];
-            CGFloat longitude = [[location objectForKey:@"longitude"] doubleValue];
-            CGFloat accuracy = [[location objectForKey:@"accuracy"] doubleValue];
-            [request setLocationWithLatitude:latitude longitude:longitude accuracy:accuracy];
-        }
+    if (_bannerView == nil) {
+        return;
     }
-    
-    [_bannerView loadRequest:request];
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(void){
+        DFPRequest *request = [DFPRequest request];
+        request.testDevices = _testDevices;
+        
+        if (_targeting != nil && _bannerView.validAdSizes != nil) {
+            NSDictionary *customTargeting = [_targeting objectForKey:@"customTargeting"];
+            if (customTargeting != nil) {
+                request.customTargeting = customTargeting;
+            }
+            NSArray *categoryExclusions = [_targeting objectForKey:@"categoryExclusions"];
+            if (categoryExclusions != nil) {
+                request.categoryExclusions = categoryExclusions;
+            }
+            NSArray *keywords = [_targeting objectForKey:@"keywords"];
+            if (keywords != nil) {
+                request.keywords = keywords;
+            }
+            NSString *gender = [_targeting objectForKey:@"gender"];
+            if (gender != nil) {
+                request.gender = [RCTConvert GADGender:gender];
+            }
+            NSDate *birthday = [_targeting objectForKey:@"birthday"];
+            if (birthday != nil) {
+                request.birthday = [RCTConvert NSDate:birthday];
+            }
+            id childDirectedTreatment = [_targeting objectForKey:@"childDirectedTreatment"];
+            if (childDirectedTreatment != nil) {
+                [request tagForChildDirectedTreatment:childDirectedTreatment];
+            }
+            NSString *contentURL = [_targeting objectForKey:@"contentURL"];
+            if (contentURL != nil) {
+                request.contentURL = contentURL;
+            }
+            NSString *publisherProvidedID = [_targeting objectForKey:@"publisherProvidedID"];
+            if (publisherProvidedID != nil) {
+                request.publisherProvidedID = publisherProvidedID;
+            }
+            NSDictionary *location = [_targeting objectForKey:@"location"];
+            if (location != nil) {
+                CGFloat latitude = [[location objectForKey:@"latitude"] doubleValue];
+                CGFloat longitude = [[location objectForKey:@"longitude"] doubleValue];
+                CGFloat accuracy = [[location objectForKey:@"accuracy"] doubleValue];
+                [request setLocationWithLatitude:latitude longitude:longitude accuracy:accuracy];
+            }
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self addSubview:_bannerView];
+        });
+        [_bannerView loadRequest:request];
+    });
 }
 
 - (void)setValidAdSizes:(NSArray *)adSizes
@@ -103,6 +109,13 @@
         }
     }];
     _bannerView.validAdSizes = validAdSizes;
+    [self loadBanner];
+}
+
+-(void)setTargeting:(NSDictionary *)targeting
+{
+    _targeting = targeting;
+    [self loadBanner];
 }
 
 -(void)layoutSubviews

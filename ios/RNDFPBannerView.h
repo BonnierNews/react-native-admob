@@ -10,6 +10,7 @@
 
 @interface RNDFPBannerView : RCTView <GADBannerViewDelegate, GADAdSizeDelegate, GADAppEventDelegate>
 
+@property DFPBannerView  *bannerView;
 @property (nonatomic, copy) NSArray *validAdSizes;
 @property (nonatomic, copy) NSArray *testDevices;
 @property (nonatomic, copy) NSDictionary *targeting;
