@@ -129,6 +129,9 @@ class ReactPublisherAdView extends ReactViewGroup implements AppEventListener {
   }
 
   public void loadBanner() {
+    if (this.adSize == null || this.validAdSizes == null || this.targeting == null) {
+      return;
+    }
     ArrayList<AdSize> adSizes = new ArrayList<AdSize>();
     if (this.adSize != null) {
       adSizes.add(this.adSize);
@@ -153,128 +156,126 @@ class ReactPublisherAdView extends ReactViewGroup implements AppEventListener {
       }
     }
 
-    if (targeting != null) {
-      if (targeting.hasKey("customTargeting")) {
-        ReadableMap customTargeting = targeting.getMap("customTargeting");
-        ReadableMapKeySetIterator iterator = customTargeting.keySetIterator();
-        while (iterator.hasNextKey()) {
-          String key = iterator.nextKey();
-          String value = "";
-          switch (customTargeting.getType(key)) {
-            case Boolean:
-              value = Boolean.toString(customTargeting.getBoolean(key));
-              adRequestBuilder.addCustomTargeting(key, value);
-              break;
-            case Number:
-              double d = customTargeting.getDouble(key);
-              if ((d % 1) == 0) {
-                value = Integer.toString((int) d);
+    if (targeting.hasKey("customTargeting")) {
+      ReadableMap customTargeting = targeting.getMap("customTargeting");
+      ReadableMapKeySetIterator iterator = customTargeting.keySetIterator();
+      while (iterator.hasNextKey()) {
+        String key = iterator.nextKey();
+        String value = "";
+        switch (customTargeting.getType(key)) {
+          case Boolean:
+            value = Boolean.toString(customTargeting.getBoolean(key));
+            adRequestBuilder.addCustomTargeting(key, value);
+            break;
+          case Number:
+            double d = customTargeting.getDouble(key);
+            if ((d % 1) == 0) {
+              value = Integer.toString((int) d);
+            }
+            else {
+              value = Double.toString(d);
+            }
+            adRequestBuilder.addCustomTargeting(key, value);
+            break;
+          case String:
+            value = customTargeting.getString(key);
+            adRequestBuilder.addCustomTargeting(key, value);
+            break;
+          case Array:
+            ReadableArray a = customTargeting.getArray(key);
+            List<String> values = new ArrayList<String>();
+            for (int i = 0; i < a.size(); i++) {
+              switch (a.getType(i)) {
+                case String:
+                  values.add(a.getString(i));
+                  break;
+                default:
+                  break;
               }
-              else {
-                value = Double.toString(d);
-              }
-              adRequestBuilder.addCustomTargeting(key, value);
-              break;
-            case String:
-              value = customTargeting.getString(key);
-              adRequestBuilder.addCustomTargeting(key, value);
-              break;
-            case Array:
-              ReadableArray a = customTargeting.getArray(key);
-              List<String> values = new ArrayList<String>();
-              for (int i = 0; i < a.size(); i++) {
-                switch (a.getType(i)) {
-                  case String:
-                    values.add(a.getString(i));
-                    break;
-                  default:
-                    break;
-                }
-              }
-              adRequestBuilder.addCustomTargeting(key, values);
-            default:
-              break;
-          }
+            }
+            adRequestBuilder.addCustomTargeting(key, values);
+          default:
+            break;
         }
       }
+    }
 
-      if (targeting.hasKey("categoryExclusions")) {
-        ReadableArray categoryExclusions = targeting.getArray("categoryExclusions");
-        for (int i = 0; i < categoryExclusions.size(); i++) {
-          try {
-            String category = categoryExclusions.getString(i);
-            adRequestBuilder.addCategoryExclusion(category);
-          } catch (Exception e) {}
+    if (targeting.hasKey("categoryExclusions")) {
+      ReadableArray categoryExclusions = targeting.getArray("categoryExclusions");
+      for (int i = 0; i < categoryExclusions.size(); i++) {
+        try {
+          String category = categoryExclusions.getString(i);
+          adRequestBuilder.addCategoryExclusion(category);
+        } catch (Exception e) {}
+      }
+    }
+
+    if (targeting.hasKey("keywords")) {
+      ReadableArray keywords = targeting.getArray("keywords");
+      for (int i = 0; i < keywords.size(); i++) {
+        try {
+          String keyword = keywords.getString(i);
+          adRequestBuilder.addCategoryExclusion(keyword);
+        } catch (Exception e) {}
+      }
+    }
+
+    if (targeting.hasKey("gender")) {
+      try {
+        String gender = targeting.getString("gender");
+        if (gender == "male") {
+          adRequestBuilder.setGender(PublisherAdRequest.GENDER_MALE);
+        } else if (gender == "female") {
+          adRequestBuilder.setGender(PublisherAdRequest.GENDER_FEMALE);
+        } else {
+          adRequestBuilder.setGender(PublisherAdRequest.GENDER_UNKNOWN);
         }
-      }
+      } catch (Exception e) {}
+    }
 
-      if (targeting.hasKey("keywords")) {
-        ReadableArray keywords = targeting.getArray("keywords");
-        for (int i = 0; i < keywords.size(); i++) {
-          try {
-            String keyword = keywords.getString(i);
-            adRequestBuilder.addCategoryExclusion(keyword);
-          } catch (Exception e) {}
-        }
+    /*if (targeting.hasKey("birthday")) {
+      try {
+        String birthdayString = targeting.getString("birthday");
+        DateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.ENGLISH);
+        Date birthday = new Date(format.parse(birthdayString).getTime());
+        adRequestBuilder.setBirthday(birthday);
+        Log.d("PublisherAdBanner", "birthday");
+      } catch (Exception e) {
+        Log.d("PublisherAdBanner", "could not set birthday");
       }
+    }*/
 
-      if (targeting.hasKey("gender")) {
-        try {
-          String gender = targeting.getString("gender");
-          if (gender == "male") {
-            adRequestBuilder.setGender(PublisherAdRequest.GENDER_MALE);
-          } else if (gender == "female") {
-            adRequestBuilder.setGender(PublisherAdRequest.GENDER_FEMALE);
-          } else {
-            adRequestBuilder.setGender(PublisherAdRequest.GENDER_UNKNOWN);
-          }
-        } catch (Exception e) {}
-      }
+    if (targeting.hasKey("childDirectedTreatment")) {
+      Boolean childDirectedTreatment = targeting.getBoolean("childDirectedTreatment");
+      adRequestBuilder.tagForChildDirectedTreatment(childDirectedTreatment);
+    }
 
-      /*if (targeting.hasKey("birthday")) {
-        try {
-          String birthdayString = targeting.getString("birthday");
-          DateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX", Locale.ENGLISH);
-          Date birthday = new Date(format.parse(birthdayString).getTime());
-          adRequestBuilder.setBirthday(birthday);
-          Log.d("PublisherAdBanner", "birthday");
-        } catch (Exception e) {
-          Log.d("PublisherAdBanner", "could not set birthday");
-        }
-      }*/
+    if (targeting.hasKey("contentURL")) {
+      try {
+        String contentURL = targeting.getString("contentURL");
+        adRequestBuilder.setContentUrl(contentURL);
+      } catch (Exception e) {}
+    }
 
-      if (targeting.hasKey("childDirectedTreatment")) {
-        Boolean childDirectedTreatment = targeting.getBoolean("childDirectedTreatment");
-        adRequestBuilder.tagForChildDirectedTreatment(childDirectedTreatment);
-      }
+    if (targeting.hasKey("publisherProvidedID")) {
+      try {
+        String publisherProvidedID = targeting.getString("publisherProvidedID");
+        adRequestBuilder.setPublisherProvidedId(publisherProvidedID);
+      } catch (Exception e) {}
+    }
 
-      if (targeting.hasKey("contentURL")) {
-        try {
-          String contentURL = targeting.getString("contentURL");
-          adRequestBuilder.setContentUrl(contentURL);
-        } catch (Exception e) {}
-      }
-
-      if (targeting.hasKey("publisherProvidedID")) {
-        try {
-          String publisherProvidedID = targeting.getString("publisherProvidedID");
-          adRequestBuilder.setPublisherProvidedId(publisherProvidedID);
-        } catch (Exception e) {}
-      }
-
-      if (targeting.hasKey("location")) {
-        try {
-          ReadableMap locationMap = targeting.getMap("location");
-          double lat = locationMap.getDouble("latitude");
-          double lon = locationMap.getDouble("longitude");
-          double accuracy = locationMap.getDouble("accuracy");
-          Location location = new Location("");
-          location.setLatitude(lat);
-          location.setLongitude(lon);
-          location.setAccuracy((float) accuracy);
-          adRequestBuilder.setLocation(location);
-        } catch (Exception e) {}
-      }
+    if (targeting.hasKey("location")) {
+      try {
+        ReadableMap locationMap = targeting.getMap("location");
+        double lat = locationMap.getDouble("latitude");
+        double lon = locationMap.getDouble("longitude");
+        double accuracy = locationMap.getDouble("accuracy");
+        Location location = new Location("");
+        location.setLatitude(lat);
+        location.setLongitude(lon);
+        location.setAccuracy((float) accuracy);
+        adRequestBuilder.setLocation(location);
+      } catch (Exception e) {}
     }
 
     PublisherAdRequest adRequest = adRequestBuilder.build();
@@ -362,6 +363,7 @@ public class RNPublisherBannerViewManager extends SimpleViewManager<ReactPublish
     if (adSize != null) {
       view.setAdSize(adSize);
     }
+    view.loadBanner();
   }
 
   @ReactProp(name = PROP_VALID_AD_SIZES)
@@ -377,6 +379,7 @@ public class RNPublisherBannerViewManager extends SimpleViewManager<ReactPublish
         }
     }
     view.setValidAdSizes(validAdSizes);
+    view.loadBanner();
   }
 
   @ReactProp(name = PROP_AD_UNIT_ID)
@@ -394,6 +397,7 @@ public class RNPublisherBannerViewManager extends SimpleViewManager<ReactPublish
   @ReactProp(name = PROP_TARGETING)
   public void setPropTargeting(final ReactPublisherAdView view, final ReadableMap targeting) {
     view.setTargeting(targeting);
+    view.loadBanner();
   }
 
   private AdSize getAdSizeFromString(String adSize) {
@@ -435,20 +439,5 @@ public class RNPublisherBannerViewManager extends SimpleViewManager<ReactPublish
     final Map<String, Object> constants = new HashMap<>();
     constants.put("simulatorId", PublisherAdRequest.DEVICE_ID_EMULATOR);
     return constants;
-  }
-
-  @javax.annotation.Nullable
-  @Override
-  public Map<String, Integer> getCommandsMap() {
-    return MapBuilder.of("loadBanner", COMMAND_LOAD_BANNER);
-  }
-
-  @Override
-  public void receiveCommand(ReactPublisherAdView root, int commandId, @javax.annotation.Nullable ReadableArray args) {
-    switch (commandId) {
-      case COMMAND_LOAD_BANNER:
-        root.loadBanner();
-        break;
-    }
   }
 }
